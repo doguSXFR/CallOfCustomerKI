@@ -20,6 +20,7 @@ services:
       ELEVENLABS_VOICE_ID: ${ELEVENLABS_VOICE_ID}
       # OpenAI (LLM)
       OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
       OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
       # Server
       PORT: "3000"

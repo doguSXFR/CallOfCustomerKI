@@ -95,6 +95,6 @@ export type VoiceStreamInMessage =
 /** Message from backend to browser */
 export type VoiceStreamOutMessage =
   | { type: 'audio'; data: string } // base64 MP3 chunk
-  | { type: 'transcript'; text: string; role: 'user' | 'assistant' }
+  | { type: 'transcript'; text: string; role: 'user' | 'assistant'; interim?: boolean }
   | { type: 'status'; status: 'idle' | 'listening' | 'processing' | 'speaking' }
   | { type: 'error'; error: string };

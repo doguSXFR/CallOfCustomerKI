@@ -5,7 +5,7 @@ import type { ConversationMessage, LLMChunkEvent } from '@cock/shared';
 
 const log = createLogger('openai-llm');
 
-const openai = new OpenAI({ apiKey: env.OPENAI_API_KEY });
+const openai = new OpenAI({ apiKey: env.OPENAI_API_KEY, baseURL: env.OPENAI_BASE_URL });
 
 /**
  * Stream an LLM response for a phone conversation

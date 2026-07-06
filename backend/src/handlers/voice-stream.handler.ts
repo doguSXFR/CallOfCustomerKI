@@ -34,8 +34,8 @@ export function handleVoiceStream(ws: WebSocket) {
     send({ type: 'audio', data: buffer.toString('base64') });
   });
 
-  pipeline.on('transcript', (event: { text: string; role: 'user' | 'assistant' }) => {
-    send({ type: 'transcript', text: event.text, role: event.role });
+  pipeline.on('transcript', (event: { text: string; role: 'user' | 'assistant'; interim?: boolean }) => {
+    send({ type: 'transcript', text: event.text, role: event.role, interim: event.interim });
   });
 
   pipeline.on('status', (status: string) => {

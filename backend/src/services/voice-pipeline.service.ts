@@ -35,8 +35,10 @@ export class VoicePipelineService extends EventEmitter {
     this.stt.on('transcript', (event) => {
       if (event.isFinal && event.transcript.trim()) {
         log.info('User said', { text: event.transcript }, this.sessionId);
-        this.emit('transcript', { text: event.transcript, role: 'user' });
+        this.emit('transcript', { text: event.transcript, role: 'user', interim: false });
         this.handleUserSpeech(event.transcript);
+      } else if (event.transcript.trim()) {
+        this.emit('transcript', { text: event.transcript, role: 'user', interim: true });
       }
     });
 
@@ -57,6 +59,12 @@ export class VoicePipelineService extends EventEmitter {
 
     this.tts.on('error', (error) => {
       log.error('TTS error', { error: String(error) }, this.sessionId);
+      const msg = error instanceof Error ? error.message : String(error);
+      if (msg.includes('401')) {
+        this.emit('error', 'ElevenLabs API key invalid');
+      } else {
+        this.emit('error', `TTS: ${msg}`);
+      }
     });
 
     this.stt.connect();
@@ -113,7 +121,14 @@ export class VoicePipelineService extends EventEmitter {
       }
     } catch (error) {
       log.error('Pipeline error', { error: String(error) }, this.sessionId);
-      this.emit('error', String(error));
+      const msg = error instanceof Error ? error.message : String(error);
+      if (msg.includes('401') || msg.includes('Incorrect API key')) {
+        this.emit('error', 'OpenAI API key invalid');
+      } else if (msg.includes('429')) {
+        this.emit('error', 'Rate limit exceeded — try again later');
+      } else {
+        this.emit('error', msg);
+      }
     } finally {
       this.isProcessing = false;
       this.resetSilenceTimer();

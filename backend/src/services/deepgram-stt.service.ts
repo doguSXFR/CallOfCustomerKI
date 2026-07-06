@@ -81,11 +81,21 @@ export class DeepgramSTTService extends EventEmitter {
 
     this.ws.on('error', (error: Error) => {
       log.error('Deepgram error', { error: String(error) }, this.callSid);
-      this.emit('error', error);
+      this.emit('error', new Error(`Deepgram connection error: ${error.message}`));
     });
 
     this.ws.on('close', (code: number, reason: Buffer) => {
-      log.info('Deepgram stream closed', { code, reason: reason.toString() }, this.callSid);
+      const reasonStr = reason.toString();
+      log.info('Deepgram stream closed', { code, reason: reasonStr }, this.callSid);
+
+      if (code === 4001 || code === 4002 || code === 4003) {
+        this.emit('error', new Error('Deepgram API key invalid or expired'));
+      } else if (code === 4008) {
+        this.emit('error', new Error('Deepgram: request too large'));
+      } else if (code >= 4000) {
+        this.emit('error', new Error(`Deepgram error (${code}): ${reasonStr}`));
+      }
+
       this.emit('close');
     });
   }

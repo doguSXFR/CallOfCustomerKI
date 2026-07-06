@@ -22,6 +22,7 @@ export function VoiceChat() {
   const {
     wsStatus,
     messages,
+    interimText,
     pipelineStatus,
     connect,
     disconnect,
@@ -41,7 +42,6 @@ export function VoiceChat() {
 
   const capture = useAudioCapture({ onAudioData });
 
-  // Wire server audio → playback
   useEffect(() => {
     if (playbackAttached.current) return;
     playbackAttached.current = true;
@@ -50,8 +50,8 @@ export function VoiceChat() {
     });
   }, [onAudio, playback]);
 
-  // Derive UI status
   const status: VoiceStatus = (() => {
+    if (capture.status === 'error') return 'idle';
     if (capture.status === 'recording') return 'listening';
     if (pipelineStatus === 'processing' || pipelineStatus === 'llm') return 'processing';
     if (playback.status === 'playing') return 'speaking';
@@ -61,7 +61,9 @@ export function VoiceChat() {
   const handleStart = useCallback(async () => {
     if (wsStatus !== 'connected') connect();
     await capture.start();
-    setIsRecording(true);
+    if (capture.status !== 'error') {
+      setIsRecording(true);
+    }
   }, [wsStatus, connect, capture]);
 
   const handleStop = useCallback(() => {
@@ -83,17 +85,11 @@ export function VoiceChat() {
 
   return (
     <div className="w-full max-w-lg mx-auto flex flex-col items-center gap-8 p-4">
-      {/* Header */}
       <div className="text-center space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight">
-          C.O.C.K
-        </h1>
-        <p className="text-muted-foreground text-sm">
-          AI Voice Assistant
-        </p>
+        <h1 className="text-3xl font-bold tracking-tight">C.O.C.K</h1>
+        <p className="text-muted-foreground text-sm">AI Voice Assistant</p>
       </div>
 
-      {/* Main Voice Card */}
       <Card className="w-full">
         <CardHeader className="text-center pb-4">
           <div className="flex justify-center">
@@ -101,70 +97,64 @@ export function VoiceChat() {
           </div>
         </CardHeader>
         <CardContent className="flex flex-col items-center gap-6">
-          {/* Waveform */}
           <Waveform analyserNode={capture.analyserNode} active={isRecording} />
 
-          {/* Voice Button */}
           <div className="relative">
-            {/* Pulse rings when active */}
             {isRecording && (
               <>
                 <div className="absolute inset-0 rounded-full bg-red-500/20 animate-pulse-ring" />
                 <div className="absolute inset-0 rounded-full bg-red-500/10 animate-pulse-ring" style={{ animationDelay: '0.5s' }} />
               </>
             )}
-
             <Button
               onClick={handleToggle}
-              disabled={isConnecting}
-              className={`w-32 h-32 rounded-full text-4xl transition-all duration-300 ${
+              disabled={isConnecting || capture.status === 'error'}
+              size="lg"
+              className={`w-32 h-32 rounded-full text-4xl ${
                 isRecording
-                  ? 'bg-red-600 hover:bg-red-700 shadow-lg shadow-red-600/30 scale-105'
-                  : 'bg-primary hover:bg-primary/90'
+                  ? 'bg-red-600 hover:bg-red-700'
+                  : ''
               }`}
             >
-              {isRecording ? (
-                <MicOff className="w-12 h-12" />
-              ) : (
-                <Mic className="w-12 h-12" />
-              )}
+              {isRecording ? <MicOff className="w-12 h-12" /> : <Mic className="w-12 h-12" />}
             </Button>
           </div>
 
-          {/* Status text */}
-          <p className="text-sm text-muted-foreground">
-            {isConnecting
-              ? 'Verbindet...'
-              : isRecording
-                ? 'Klicke zum Stoppen'
-                : 'Klicke zum Sprechen'}
-          </p>
+          {capture.errorMessage ? (
+            <p className="text-sm text-destructive">{capture.errorMessage}</p>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              {isConnecting ? 'Verbindet...' : isRecording ? 'Klicke zum Stoppen' : 'Klicke zum Sprechen'}
+            </p>
+          )}
 
-          {/* Connection Badge */}
           <Badge variant={isConnected ? 'success' : isConnecting ? 'warning' : 'secondary'}>
             {isConnected ? 'Verbunden' : isConnecting ? 'Verbindet...' : 'Getrennt'}
           </Badge>
         </CardContent>
       </Card>
 
-      {/* Chat Log */}
       <Card className="w-full">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-medium">Chat Verlauf</CardTitle>
         </CardHeader>
         <CardContent>
+          {interimText && (
+            <div className="mb-3 flex justify-end">
+              <div className="max-w-[85%] rounded-2xl rounded-br-md px-4 py-3 text-sm bg-primary/40 text-primary-foreground/60">
+                <span className="text-[10px] opacity-60 block mb-1 font-medium uppercase tracking-wider">
+                  Du
+                </span>
+                <p className="leading-relaxed italic">{interimText}</p>
+              </div>
+            </div>
+          )}
           <ChatLog messages={messages} />
         </CardContent>
       </Card>
 
-      {/* Disconnect button */}
       {isConnected && (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={disconnect}
-          className="text-muted-foreground hover:text-foreground"
-        >
+        <Button variant="ghost" size="sm" onClick={disconnect} className="text-muted-foreground">
           <PhoneOff className="w-4 h-4 mr-2" />
           Verbindung trennen
         </Button>

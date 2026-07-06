@@ -6,3 +6,4 @@ dist/
 *.d.ts
 !shared/src/**/*.d.ts
 *.tsbuildinfo
+*.swp

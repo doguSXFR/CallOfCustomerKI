@@ -11,6 +11,7 @@ export interface UseAudioCaptureOptions {
 export function useAudioCapture(options: UseAudioCaptureOptions = {}) {
   const { sampleRate = 16000, onAudioData } = options;
   const [status, setStatus] = useState<CaptureStatus>('idle');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [analyserNode, setAnalyserNode] = useState<AnalyserNode | null>(null);
 
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -25,6 +26,17 @@ export function useAudioCapture(options: UseAudioCaptureOptions = {}) {
 
   const start = useCallback(async () => {
     try {
+      setErrorMessage(null);
+
+      if (!navigator.mediaDevices?.getUserMedia) {
+        const msg = window.location.protocol === 'https:' || window.location.hostname === 'localhost'
+          ? 'Microphone access is not supported in this browser.'
+          : 'HTTPS is required for microphone access. Please use HTTPS or localhost.';
+        setErrorMessage(msg);
+        setStatus('error');
+        throw new Error(msg);
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           sampleRate,
@@ -62,9 +74,12 @@ export function useAudioCapture(options: UseAudioCaptureOptions = {}) {
       setStatus('recording');
     } catch (err) {
       console.error('Audio capture error:', err);
+      if (!errorMessage) {
+        setErrorMessage(err instanceof Error ? err.message : 'Failed to access microphone');
+      }
       setStatus('error');
     }
-  }, [sampleRate]);
+  }, [sampleRate, errorMessage]);
 
   const stop = useCallback(() => {
     processorRef.current?.disconnect();
@@ -82,6 +97,7 @@ export function useAudioCapture(options: UseAudioCaptureOptions = {}) {
     audioContextRef.current = null;
 
     setAnalyserNode(null);
+    setErrorMessage(null);
     setStatus('idle');
   }, []);
 
@@ -89,5 +105,5 @@ export function useAudioCapture(options: UseAudioCaptureOptions = {}) {
     return () => stop();
   }, [stop]);
 
-  return { status, start, stop, analyserNode };
+  return { status, errorMessage, start, stop, analyserNode };
 }

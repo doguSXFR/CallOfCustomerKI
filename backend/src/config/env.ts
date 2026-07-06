@@ -15,7 +15,8 @@ const envSchema = z.object({
   ELEVENLABS_VOICE_ID: z.string().default('placeholder'),
 
   // OpenAI (LLM)
-  OPENAI_API_KEY: z.string().default('sk-placeholder'),
+  OPENAI_API_KEY: z.string().default('placeholder'),
+  OPENAI_BASE_URL: z.string().default('https://api.openai.com/v1'),
   OPENAI_MODEL: z.string().default('gpt-4o-mini'),
 
   // Server

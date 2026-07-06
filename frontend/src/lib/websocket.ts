@@ -1,6 +1,6 @@
 export type VoiceWSMessage =
   | { type: 'audio'; data: string }
-  | { type: 'transcript'; text: string; role: 'user' | 'assistant' }
+  | { type: 'transcript'; text: string; role: 'user' | 'assistant'; interim?: boolean }
   | { type: 'status'; status: string }
   | { type: 'error'; error: string };
 

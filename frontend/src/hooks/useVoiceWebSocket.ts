@@ -12,6 +12,7 @@ export interface ChatMessage {
 export function useVoiceWebSocket(url: string) {
   const [wsStatus, setWsStatus] = useState<WSStatus>('disconnected');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [interimText, setInterimText] = useState<string>('');
   const [pipelineStatus, setPipelineStatus] = useState<string>('idle');
 
   const wsRef = useRef<WebSocket | null>(null);
@@ -34,10 +35,15 @@ export function useVoiceWebSocket(url: string) {
 
         switch (msg.type) {
           case 'transcript':
-            setMessages((prev) => [
-              ...prev,
-              { role: msg.role, text: msg.text, timestamp: Date.now() },
-            ]);
+            if (msg.interim) {
+              setInterimText(msg.text);
+            } else {
+              setInterimText('');
+              setMessages((prev) => [
+                ...prev,
+                { role: msg.role, text: msg.text, timestamp: Date.now() },
+              ]);
+            }
             break;
           case 'audio':
             // handled by onAudio callback
@@ -73,6 +79,7 @@ export function useVoiceWebSocket(url: string) {
     wsRef.current?.close();
     wsRef.current = null;
     setWsStatus('disconnected');
+    setInterimText('');
   }, []);
 
   const sendAudio = useCallback((base64Pcm: string) => {
@@ -115,6 +122,7 @@ export function useVoiceWebSocket(url: string) {
   return {
     wsStatus,
     messages,
+    interimText,
     pipelineStatus,
     connect,
     disconnect,
