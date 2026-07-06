@@ -1,0 +1,19 @@
+{
+  "name": "callofcustomerki",
+  "version": "0.1.0",
+  "private": true,
+  "description": "C.O.C.K — AI Phone Agent powered by Twilio + Deepgram + OpenAI + ElevenLabs",
+  "workspaces": [
+    "shared",
+    "backend"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=backend",
+    "build": "npm run build --workspace=shared && npm run build --workspace=backend",
+    "start": "npm run start --workspace=backend",
+    "typecheck": "tsc --noEmit -p tsconfig.base.json"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
