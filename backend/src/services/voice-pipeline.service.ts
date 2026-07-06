@@ -26,6 +26,7 @@ export class VoicePipelineService extends EventEmitter {
   private messages: ConversationMessage[] = [];
   private isProcessing = false;
   private lastUserTranscript = '';
+  private lastTranscriptTime = 0;
   private silenceTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(sessionId: string) {
@@ -98,12 +99,16 @@ export class VoicePipelineService extends EventEmitter {
   }
 
   private async handleUserSpeech(transcript: string) {
+    // Guard: skip if already processing or if this is a near-duplicate transcript
     if (this.isProcessing) return;
-    if (transcript === this.lastUserTranscript) {
-      log.info('Duplicate transcript ignored', { text: transcript }, this.sessionId);
+    const normalized = transcript.trim().toLowerCase();
+    const now = Date.now();
+    if (normalized === this.lastUserTranscript && now - this.lastTranscriptTime < 3000) {
+      log.info('Duplicate transcript ignored (3s window)', { text: transcript }, this.sessionId);
       return;
     }
-    this.lastUserTranscript = transcript;
+    this.lastUserTranscript = normalized;
+    this.lastTranscriptTime = now;
     this.isProcessing = true;
     this.clearSilenceTimer();
     this.emit('status', 'processing');
