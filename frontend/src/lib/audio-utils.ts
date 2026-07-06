@@ -70,7 +70,9 @@ export function pcm16Base64ToAudioBuffer(
     bytes[i] = binary.charCodeAt(i);
   }
 
-  const int16 = new Int16Array(bytes.buffer);
+  // Ensure even byte length for Int16Array (PCM16 = 2 bytes per sample)
+  const evenLength = bytes.length - (bytes.length % 2);
+  const int16 = new Int16Array(bytes.buffer, 0, evenLength / 2);
   const float32 = new Float32Array(int16.length);
   for (let i = 0; i < int16.length; i++) {
     float32[i] = int16[i] / 32768;
