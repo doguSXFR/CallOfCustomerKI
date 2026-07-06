@@ -7,8 +7,8 @@ const log = createLogger('minimax-tts');
 /**
  * Real-time Text-to-Speech via MiniMax HTTP streaming T2A API
  *
- * Uses SSE streaming — each chunk contains base64-encoded MP3 audio.
- * Output is MP3, sent directly to the browser for playback.
+ * Uses SSE streaming — each chunk contains hex-encoded MP3 audio.
+ * Hex is decoded to binary Buffer, then sent to browser as base64 for playback.
  */
 export class MiniMaxTTSService extends EventEmitter {
   private voiceId: string;
@@ -102,11 +102,12 @@ export class MiniMaxTTSService extends EventEmitter {
 
         try {
           const json = JSON.parse(data);
-          // MiniMax SSE: { data: { audio: "<base64>" } }
-          const audioBase64 = json.data?.audio ?? json.audio;
-          console.log('[MINIMAX] SSE chunk', audioBase64?.length || 0, 'bytes');
-          if (audioBase64) {
-            const audioBuffer = Buffer.from(audioBase64, 'base64');
+          // MiniMax SSE: { data: { audio: "<hex-encoded-audio>" } }
+          // Hex string → binary Buffer (MP3 data)
+          const audioHex = json.data?.audio ?? json.audio;
+          console.log('[MINIMAX] SSE chunk', audioHex?.length || 0, 'hex chars');
+          if (audioHex) {
+            const audioBuffer = Buffer.from(audioHex, 'hex');
             totalBytes += audioBuffer.length;
             this.emit('audio_chunk', audioBuffer);
           }
@@ -122,9 +123,9 @@ export class MiniMaxTTSService extends EventEmitter {
       if (data !== '[DONE]') {
         try {
           const json = JSON.parse(data);
-          const audioBase64 = json.data?.audio ?? json.audio;
-          if (audioBase64) {
-            const audioBuffer = Buffer.from(audioBase64, 'base64');
+          const audioHex = json.data?.audio ?? json.audio;
+          if (audioHex) {
+            const audioBuffer = Buffer.from(audioHex, 'hex');
             totalBytes += audioBuffer.length;
             this.emit('audio_chunk', audioBuffer);
           }
