@@ -1,29 +1,32 @@
+import { Badge } from './ui/badge';
+
 export type VoiceStatus = 'idle' | 'listening' | 'processing' | 'speaking';
 
 interface StatusIndicatorProps {
   status: VoiceStatus;
 }
 
-const STATUS_CONFIG: Record<VoiceStatus, { label: string; color: string; pulse: boolean }> = {
-  idle: { label: 'Bereit', color: 'bg-gray-500', pulse: false },
-  listening: { label: 'Hört zu...', color: 'bg-green-500', pulse: true },
-  processing: { label: 'Verarbeitet...', color: 'bg-yellow-500', pulse: true },
-  speaking: { label: 'Spricht...', color: 'bg-blue-500', pulse: true },
+const STATUS_CONFIG: Record<VoiceStatus, { label: string; variant: 'default' | 'success' | 'warning' | 'info' }> = {
+  idle: { label: 'Bereit', variant: 'default' },
+  listening: { label: 'Hört zu...', variant: 'success' },
+  processing: { label: 'Verarbeitet...', variant: 'warning' },
+  speaking: { label: 'Spricht...', variant: 'info' },
 };
 
 export function StatusIndicator({ status }: StatusIndicatorProps) {
   const config = STATUS_CONFIG[status];
 
   return (
-    <div className="flex items-center gap-2 justify-center">
-      <div
-        className={`w-2.5 h-2.5 rounded-full ${config.color} ${
-          config.pulse ? 'animate-pulse' : ''
-        }`}
+    <Badge variant={config.variant} className="gap-2">
+      <span
+        className={`w-2 h-2 rounded-full ${
+          status === 'idle' ? 'bg-muted-foreground' :
+          status === 'listening' ? 'bg-green-400' :
+          status === 'processing' ? 'bg-yellow-400' :
+          'bg-blue-400'
+        } ${status !== 'idle' ? 'animate-pulse' : ''}`}
       />
-      <span className="text-xs text-gray-400 uppercase tracking-wider">
-        {config.label}
-      </span>
-    </div>
+      {config.label}
+    </Badge>
   );
 }

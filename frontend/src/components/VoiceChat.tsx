@@ -6,13 +6,16 @@ import { Waveform } from './Waveform';
 import { ChatLog } from './ChatLog';
 import { StatusIndicator } from './StatusIndicator';
 import type { VoiceStatus } from './StatusIndicator';
+import { Button } from './ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Badge } from './ui/badge';
+import { Mic, MicOff, PhoneOff } from 'lucide-react';
 
 const WS_URL =
   import.meta.env.VITE_WS_URL ||
   `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws/voice/stream`;
 
 export function VoiceChat() {
-  const [mode, setMode] = useState<'ptt' | 'toggle'>('ptt');
   const [isRecording, setIsRecording] = useState(false);
   const playbackAttached = useRef(false);
 
@@ -75,79 +78,96 @@ export function VoiceChat() {
     }
   }, [isRecording, handleStart, handleStop]);
 
+  const isConnected = wsStatus === 'connected';
+  const isConnecting = wsStatus === 'connecting';
+
   return (
-    <div className="w-full max-w-md mx-auto flex flex-col items-center gap-6">
-      <h1 className="text-2xl font-bold tracking-tight">
-        C.O.C.K <span className="text-gray-500 text-base font-normal">Voice Chat</span>
-      </h1>
-
-      <StatusIndicator status={status} />
-
-      <Waveform analyserNode={capture.analyserNode} active={isRecording} />
-
-      {/* Connection status */}
-      <div className="text-[10px] text-gray-600 uppercase tracking-widest">
-        {wsStatus === 'connected' ? '● Verbunden' : wsStatus === 'connecting' ? '◐ Verbindet...' : '○ Getrennt'}
+    <div className="w-full max-w-lg mx-auto flex flex-col items-center gap-8 p-4">
+      {/* Header */}
+      <div className="text-center space-y-2">
+        <h1 className="text-3xl font-bold tracking-tight">
+          C.O.C.K
+        </h1>
+        <p className="text-muted-foreground text-sm">
+          AI Voice Assistant
+        </p>
       </div>
 
-      {/* Mode toggle */}
-      <div className="flex gap-2 text-xs">
-        <button
-          onClick={() => setMode('ptt')}
-          className={`px-3 py-1 rounded-full transition ${
-            mode === 'ptt' ? 'bg-gray-700 text-white' : 'text-gray-500 hover:text-gray-300'
-          }`}
-        >
-          Push-to-Talk
-        </button>
-        <button
-          onClick={() => setMode('toggle')}
-          className={`px-3 py-1 rounded-full transition ${
-            mode === 'toggle' ? 'bg-gray-700 text-white' : 'text-gray-500 hover:text-gray-300'
-          }`}
-        >
-          Toggle
-        </button>
-      </div>
+      {/* Main Voice Card */}
+      <Card className="w-full">
+        <CardHeader className="text-center pb-4">
+          <div className="flex justify-center">
+            <StatusIndicator status={status} />
+          </div>
+        </CardHeader>
+        <CardContent className="flex flex-col items-center gap-6">
+          {/* Waveform */}
+          <Waveform analyserNode={capture.analyserNode} active={isRecording} />
 
-      {/* Talk button */}
-      {mode === 'ptt' ? (
-        <button
-          onMouseDown={handleStart}
-          onMouseUp={handleStop}
-          onTouchStart={handleStart}
-          onTouchEnd={handleStop}
-          className={`w-24 h-24 rounded-full text-3xl font-bold transition-all select-none ${
-            isRecording
-              ? 'bg-red-600 scale-110 shadow-lg shadow-red-600/40'
-              : 'bg-red-700 hover:bg-red-600 active:scale-105'
-          }`}
-        >
-          🎙
-        </button>
-      ) : (
-        <button
-          onClick={handleToggle}
-          className={`w-24 h-24 rounded-full text-3xl font-bold transition-all select-none ${
-            isRecording
-              ? 'bg-red-600 scale-110 shadow-lg shadow-red-600/40 animate-pulse'
-              : 'bg-gray-700 hover:bg-gray-600 active:scale-105'
-          }`}
-        >
-          {isRecording ? '⏹' : '🎙'}
-        </button>
-      )}
+          {/* Voice Button */}
+          <div className="relative">
+            {/* Pulse rings when active */}
+            {isRecording && (
+              <>
+                <div className="absolute inset-0 rounded-full bg-red-500/20 animate-pulse-ring" />
+                <div className="absolute inset-0 rounded-full bg-red-500/10 animate-pulse-ring" style={{ animationDelay: '0.5s' }} />
+              </>
+            )}
 
-      {/* Chat log */}
-      <div className="w-full">
-        <ChatLog messages={messages} />
-      </div>
+            <Button
+              onClick={handleToggle}
+              disabled={isConnecting}
+              className={`w-32 h-32 rounded-full text-4xl transition-all duration-300 ${
+                isRecording
+                  ? 'bg-red-600 hover:bg-red-700 shadow-lg shadow-red-600/30 scale-105'
+                  : 'bg-primary hover:bg-primary/90'
+              }`}
+            >
+              {isRecording ? (
+                <MicOff className="w-12 h-12" />
+              ) : (
+                <Mic className="w-12 h-12" />
+              )}
+            </Button>
+          </div>
+
+          {/* Status text */}
+          <p className="text-sm text-muted-foreground">
+            {isConnecting
+              ? 'Verbindet...'
+              : isRecording
+                ? 'Klicke zum Stoppen'
+                : 'Klicke zum Sprechen'}
+          </p>
+
+          {/* Connection Badge */}
+          <Badge variant={isConnected ? 'success' : isConnecting ? 'warning' : 'secondary'}>
+            {isConnected ? 'Verbunden' : isConnecting ? 'Verbindet...' : 'Getrennt'}
+          </Badge>
+        </CardContent>
+      </Card>
+
+      {/* Chat Log */}
+      <Card className="w-full">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-medium">Chat Verlauf</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ChatLog messages={messages} />
+        </CardContent>
+      </Card>
 
       {/* Disconnect button */}
-      {wsStatus === 'connected' && (
-        <button onClick={disconnect} className="text-xs text-gray-600 hover:text-gray-400">
-          Trennen
-        </button>
+      {isConnected && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={disconnect}
+          className="text-muted-foreground hover:text-foreground"
+        >
+          <PhoneOff className="w-4 h-4 mr-2" />
+          Verbindung trennen
+        </Button>
       )}
     </div>
   );

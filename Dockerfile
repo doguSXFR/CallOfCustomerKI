@@ -7,6 +7,8 @@ WORKDIR /app
 COPY package.json package-lock.json tsconfig.base.json ./
 COPY shared/package.json shared/tsconfig.json ./shared/
 COPY backend/package.json backend/tsconfig.json ./backend/
+COPY frontend/package.json frontend/tsconfig.json frontend/vite.config.ts frontend/postcss.config.js frontend/tailwind.config.js ./frontend/
+COPY frontend/index.html ./frontend/
 
 # Install all deps (including devDeps for build)
 RUN npm ci
@@ -14,10 +16,12 @@ RUN npm ci
 # Copy source
 COPY shared/src ./shared/src
 COPY backend/src ./backend/src
+COPY frontend/src ./frontend/src
 
-# Build shared first, then backend
+# Build shared, backend, then frontend
 RUN npm run build --workspace=shared
 RUN npm run build --workspace=backend
+RUN npm run build --workspace=frontend
 
 # Prune devDeps
 RUN npm prune --omit=dev
@@ -34,9 +38,11 @@ COPY --from=builder /app/shared/dist ./shared/dist
 COPY --from=builder /app/shared/package.json ./shared/package.json
 COPY --from=builder /app/backend/dist ./backend/dist
 COPY --from=builder /app/backend/package.json ./backend/package.json
+COPY --from=builder /app/frontend/dist ./frontend/dist
 
 ENV NODE_ENV=production
 ENV PORT=3000
+ENV FRONTEND_DIST_PATH=/app/frontend/dist
 
 EXPOSE 3000
 

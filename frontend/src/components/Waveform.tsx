@@ -32,21 +32,23 @@ export function Waveform({ analyserNode, active }: WaveformProps) {
       const { width, height } = canvas;
       ctx.clearRect(0, 0, width, height);
 
-      const barCount = 32;
+      const barCount = 40;
       const barWidth = width / barCount - 2;
       const step = Math.floor(bufferLength / barCount);
 
       for (let i = 0; i < barCount; i++) {
         const value = dataArray[i * step] / 255;
-        const barHeight = value * height * 0.8;
+        const barHeight = value * height * 0.85;
 
-        const hue = (i / barCount) * 60 + 10;
-        ctx.fillStyle = `hsl(${hue}, 100%, ${50 + value * 30}%)`;
+        // Gradient from cyan to purple
+        const hue = 180 + (i / barCount) * 120;
+        const lightness = 50 + value * 20;
+        ctx.fillStyle = `hsl(${hue}, 80%, ${lightness}%)`;
 
         const x = i * (barWidth + 2);
         const y = (height - barHeight) / 2;
         ctx.beginPath();
-        ctx.roundRect(x, y, barWidth, barHeight, 3);
+        ctx.roundRect(x, y, barWidth, barHeight, 4);
         ctx.fill();
       }
     };
@@ -59,9 +61,9 @@ export function Waveform({ analyserNode, active }: WaveformProps) {
   return (
     <canvas
       ref={canvasRef}
-      width={320}
+      width={360}
       height={80}
-      className="rounded-lg bg-gray-900/50"
+      className="rounded-xl bg-secondary/50 border border-border"
     />
   );
 }
