@@ -25,7 +25,8 @@ export class VoicePipelineService extends EventEmitter {
   private tts: TTSService;
   private messages: ConversationMessage[] = [];
   private isProcessing = false;
-  private lastUserTranscript = '';
+  /** Buffer: accumulates isFinal transcripts until UtteranceEnd fires */
+  private pendingTranscript = '';
   private lastTranscriptTime = 0;
   private lastLLMCallTime = 0;
   private silenceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -50,12 +51,26 @@ export class VoicePipelineService extends EventEmitter {
 
     this.stt.on('transcript', (event) => {
       if (event.isFinal && event.transcript.trim()) {
-        log.info('User said', { text: event.transcript }, this.sessionId);
-        this.emit('transcript', { text: event.transcript, role: 'user', interim: false });
-        this.handleUserSpeech(event.transcript);
+        // Accumulate isFinal transcripts — Deepgram sends multiple per utterance
+        // as it refines the transcription. Don't process yet — wait for UtteranceEnd.
+        this.pendingTranscript = event.transcript.trim();
+        log.info('STT isFinal (buffered)', { text: this.pendingTranscript }, this.sessionId);
       } else if (event.transcript.trim()) {
         this.emit('transcript', { text: event.transcript, role: 'user', interim: true });
       }
+    });
+
+    // UtteranceEnd = Deepgram confirms the user has stopped speaking
+    // This is the ONLY point where we process the buffered transcript
+    this.stt.on('utterance_end', () => {
+      if (this.pendingTranscript && !this.isProcessing) {
+        log.info('UtteranceEnd — processing buffered transcript', { text: this.pendingTranscript }, this.sessionId);
+        const transcript = this.pendingTranscript;
+        this.pendingTranscript = '';
+        this.emit('transcript', { text: transcript, role: 'user', interim: false });
+        this.handleUserSpeech(transcript);
+      }
+      this.pendingTranscript = '';
     });
 
     this.stt.on('error', (error) => {
@@ -100,18 +115,13 @@ export class VoicePipelineService extends EventEmitter {
   }
 
   private async handleUserSpeech(transcript: string) {
-    // Guard: skip if already processing or if this is a near-duplicate transcript
-    if (this.isProcessing) return;
-    const normalized = transcript.trim().toLowerCase();
-    const now = Date.now();
-    if (normalized === this.lastUserTranscript && now - this.lastTranscriptTime < 3000) {
-      log.info('Duplicate transcript ignored (3s window)', { text: transcript }, this.sessionId);
+    // Guard: only one LLM call at a time
+    if (this.isProcessing) {
+      log.info('Speech ignored — already processing', { text: transcript }, this.sessionId);
       return;
     }
-    this.lastUserTranscript = normalized;
-    this.lastTranscriptTime = now;
 
-    // FIX 1: LLM Rate Limiter — ensure at least 1s between LLM calls
+    // Rate limiter: at least 1s between LLM calls
     const elapsed = Date.now() - this.lastLLMCallTime;
     if (elapsed < 1000) {
       const delayMs = 1000 - elapsed;
@@ -119,6 +129,7 @@ export class VoicePipelineService extends EventEmitter {
       await new Promise((resolve) => setTimeout(resolve, delayMs));
     }
     this.lastLLMCallTime = Date.now();
+    this.lastTranscriptTime = Date.now();
 
     this.isProcessing = true;
     this.clearSilenceTimer();
@@ -197,6 +208,7 @@ export class VoicePipelineService extends EventEmitter {
   stop() {
     log.info('Voice pipeline stopping', undefined, this.sessionId);
     this.clearSilenceTimer();
+    this.pendingTranscript = '';
     this.stt.close();
     this.removeAllListeners();
   }
