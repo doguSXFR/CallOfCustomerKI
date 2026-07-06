@@ -55,3 +55,28 @@ export function base64ToBlobUrl(base64: string, mimeType: string = 'audio/mpeg')
   const blob = new Blob([bytes], { type: mimeType });
   return URL.createObjectURL(blob);
 }
+
+/**
+ * Convert base64-encoded PCM16 16kHz mono to an AudioBuffer for Web Audio API playback.
+ */
+export function pcm16Base64ToAudioBuffer(
+  base64: string,
+  audioContext: AudioContext,
+  sampleRate: number = 16000,
+): AudioBuffer {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+
+  const int16 = new Int16Array(bytes.buffer);
+  const float32 = new Float32Array(int16.length);
+  for (let i = 0; i < int16.length; i++) {
+    float32[i] = int16[i] / 32768;
+  }
+
+  const audioBuffer = audioContext.createBuffer(1, float32.length, sampleRate);
+  audioBuffer.getChannelData(0).set(float32);
+  return audioBuffer;
+}

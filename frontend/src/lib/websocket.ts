@@ -1,5 +1,5 @@
 export type VoiceWSMessage =
-  | { type: 'audio'; data: string }
+  | { type: 'audio'; data: string; format?: 'mp3' | 'pcm16' }
   | { type: 'transcript'; text: string; role: 'user' | 'assistant'; interim?: boolean }
   | { type: 'status'; status: string }
   | { type: 'config'; ttsProvider: string; model: string }

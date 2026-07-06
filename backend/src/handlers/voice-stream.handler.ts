@@ -2,6 +2,7 @@ import { WebSocket } from 'ws';
 import { randomUUID } from 'crypto';
 import { VoicePipelineService } from '../services/voice-pipeline.service.js';
 import { createLogger } from '@cock/shared';
+import { env } from '../config/env.js';
 import type { VoiceStreamInMessage, VoiceStreamOutMessage } from '@cock/shared';
 
 const log = createLogger('voice-stream');
@@ -31,11 +32,16 @@ export function handleVoiceStream(ws: WebSocket) {
   }
 
   // Send config to browser immediately on connect
-  send({ type: 'config', ttsProvider: 'ElevenLabs', model: 'eleven_turbo_v2_5' });
+  const isMinimax = env.TTS_PROVIDER === 'minimax';
+  send({
+    type: 'config',
+    ttsProvider: isMinimax ? 'MiniMax' : 'ElevenLabs',
+    model: isMinimax ? 'speech-02-turbo' : 'eleven_turbo_v2_5',
+  });
 
   // Pipeline → Browser events
-  pipeline.on('audio_chunk', (buffer: Buffer) => {
-    send({ type: 'audio', data: buffer.toString('base64') });
+  pipeline.on('audio_chunk', (buffer: Buffer, format: 'mp3' | 'pcm16') => {
+    send({ type: 'audio', data: buffer.toString('base64'), format });
   });
 
   pipeline.on('transcript', (event: { text: string; role: 'user' | 'assistant'; interim?: boolean }) => {

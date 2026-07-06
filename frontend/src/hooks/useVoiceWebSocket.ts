@@ -104,7 +104,7 @@ export function useVoiceWebSocket(url: string) {
     }
   }, []);
 
-  const onAudio = useCallback((callback: (base64: string) => void) => {
+  const onAudio = useCallback((callback: (base64: string, format?: 'mp3' | 'pcm16') => void) => {
     const ws = wsRef.current;
     if (!ws) return;
 
@@ -112,7 +112,7 @@ export function useVoiceWebSocket(url: string) {
       try {
         const msg: VoiceWSMessage = JSON.parse(event.data);
         if (msg.type === 'audio') {
-          callback(msg.data);
+          callback(msg.data, msg.format);
         }
       } catch {
         // ignore

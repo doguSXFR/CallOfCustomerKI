@@ -60,8 +60,9 @@ export class VoicePipelineService extends EventEmitter {
       this.emit('error', `STT: ${String(error)}`);
     });
 
+    const ttsFormat = env.TTS_PROVIDER === 'minimax' ? 'pcm16' : 'mp3';
     this.tts.on('audio_chunk', (buffer: Buffer) => {
-      this.emit('audio_chunk', buffer);
+      this.emit('audio_chunk', buffer, ttsFormat);
     });
 
     this.tts.on('done', () => {

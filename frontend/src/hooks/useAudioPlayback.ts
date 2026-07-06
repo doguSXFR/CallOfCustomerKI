@@ -1,13 +1,29 @@
 import { useRef, useState, useCallback } from 'react';
-import { base64ToBlobUrl } from '../lib/audio-utils';
+import { pcm16Base64ToAudioBuffer, base64ToBlobUrl } from '../lib/audio-utils';
 
 export type PlaybackStatus = 'idle' | 'playing';
 
+interface QueueEntry {
+  data: string;
+  format: 'mp3' | 'pcm16';
+}
+
 export function useAudioPlayback() {
   const [status, setStatus] = useState<PlaybackStatus>('idle');
-  const queueRef = useRef<string[]>([]);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const queueRef = useRef<QueueEntry[]>([]);
   const isPlayingRef = useRef(false);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const scheduledUntilRef = useRef(0);
+
+  const getAudioContext = useCallback(() => {
+    if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
+      audioCtxRef.current = new AudioContext({ sampleRate: 16000 });
+    }
+    if (audioCtxRef.current.state === 'suspended') {
+      audioCtxRef.current.resume();
+    }
+    return audioCtxRef.current;
+  }, []);
 
   const playNext = useCallback(() => {
     if (queueRef.current.length === 0) {
@@ -16,34 +32,50 @@ export function useAudioPlayback() {
       return;
     }
 
-    const base64Chunk = queueRef.current.shift()!;
-    const url = base64ToBlobUrl(base64Chunk, 'audio/mpeg');
-
-    const audio = new Audio(url);
-    audioRef.current = audio;
+    const entry = queueRef.current.shift()!;
     isPlayingRef.current = true;
     setStatus('playing');
 
-    audio.onended = () => {
-      URL.revokeObjectURL(url);
-      audioRef.current = null;
-      playNext();
-    };
+    if (entry.format === 'pcm16') {
+      try {
+        const ctx = getAudioContext();
+        const audioBuffer = pcm16Base64ToAudioBuffer(entry.data, ctx);
 
-    audio.onerror = () => {
-      URL.revokeObjectURL(url);
-      audioRef.current = null;
-      playNext();
-    };
+        const startTime = Math.max(ctx.currentTime, scheduledUntilRef.current);
+        const source = ctx.createBufferSource();
+        source.buffer = audioBuffer;
+        source.connect(ctx.destination);
+        source.start(startTime);
+        scheduledUntilRef.current = startTime + audioBuffer.duration;
 
-    audio.play().catch(() => {
-      playNext();
-    });
-  }, []);
+        source.onended = () => playNext();
+      } catch {
+        playNext();
+      }
+    } else {
+      const url = base64ToBlobUrl(entry.data, 'audio/mpeg');
+      const audio = new Audio(url);
+
+      audio.onended = () => {
+        URL.revokeObjectURL(url);
+        playNext();
+      };
+
+      audio.onerror = () => {
+        URL.revokeObjectURL(url);
+        playNext();
+      };
+
+      audio.play().catch(() => {
+        URL.revokeObjectURL(url);
+        playNext();
+      });
+    }
+  }, [getAudioContext]);
 
   const enqueue = useCallback(
-    (base64Audio: string) => {
-      queueRef.current.push(base64Audio);
+    (base64Audio: string, format: 'mp3' | 'pcm16' = 'mp3') => {
+      queueRef.current.push({ data: base64Audio, format });
       if (!isPlayingRef.current) {
         playNext();
       }
@@ -53,9 +85,10 @@ export function useAudioPlayback() {
 
   const stop = useCallback(() => {
     queueRef.current = [];
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
+    scheduledUntilRef.current = 0;
+    if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') {
+      audioCtxRef.current.close().catch(() => {});
+      audioCtxRef.current = null;
     }
     isPlayingRef.current = false;
     setStatus('idle');

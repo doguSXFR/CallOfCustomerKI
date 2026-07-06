@@ -47,8 +47,8 @@ export function VoiceChat() {
   useEffect(() => {
     if (playbackAttached.current) return;
     playbackAttached.current = true;
-    onAudio((base64) => {
-      playback.enqueue(base64);
+    onAudio((base64, format) => {
+      playback.enqueue(base64, format);
     });
   }, [onAudio, playback]);
 
