@@ -1,0 +1,33 @@
+version: "3.9"
+
+services:
+  cock-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cock-server
+    ports:
+      - "${COCK_PORT:-3000}:3000"
+    environment:
+      # Twilio
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN}
+      TWILIO_PHONE_NUMBER: ${TWILIO_PHONE_NUMBER}
+      # Deepgram (STT)
+      DEEPGRAM_API_KEY: ${DEEPGRAM_API_KEY}
+      # ElevenLabs (TTS)
+      ELEVENLABS_API_KEY: ${ELEVENLABS_API_KEY}
+      ELEVENLABS_VOICE_ID: ${ELEVENLABS_VOICE_ID}
+      # OpenAI (LLM)
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
+      # Server
+      PORT: "3000"
+      HOST: "0.0.0.0"
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3

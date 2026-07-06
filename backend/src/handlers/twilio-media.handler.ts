@@ -51,7 +51,7 @@ export function handleTwilioMediaStream(ws: WebSocket) {
           break;
 
         case 'stop':
-          log.info('Media stream stopped', { streamSid, callSid }, callSid);
+          log.info('Media stream stopped', { streamSid, callSid }, callSid ?? undefined);
           cleanup();
           break;
       }
@@ -61,12 +61,12 @@ export function handleTwilioMediaStream(ws: WebSocket) {
   });
 
   ws.on('close', () => {
-    log.info('WebSocket closed', { callSid }, callSid || undefined);
+    log.info('WebSocket closed', { callSid }, callSid ?? undefined);
     cleanup();
   });
 
   ws.on('error', (error) => {
-    log.error('WebSocket error', { error: String(error) }, callSid || undefined);
+    log.error('WebSocket error', { error: String(error) }, callSid ?? undefined);
     cleanup();
   });
 

@@ -1,4 +1,4 @@
-import { createClient, LiveTranscriptionEvents, type LiveClient } from '@deepgram/sdk';
+import WebSocket from 'ws';
 import { EventEmitter } from 'events';
 import { env } from '../config/env.js';
 import { createLogger, type TranscriptionEvent } from '@cock/shared';
@@ -6,81 +6,86 @@ import { createLogger, type TranscriptionEvent } from '@cock/shared';
 const log = createLogger('deepgram-stt');
 
 /**
- * Real-time Speech-to-Text via Deepgram streaming
+ * Real-time Speech-to-Text via Deepgram streaming (raw WebSocket, no SDK)
  *
- * Usage:
- *   const stt = new DeepgramSTTService();
- *   stt.connect();
- *   stt.on('transcript', (event) => console.log(event.transcript));
- *   stt.sendAudio(pcmBuffer); // linear16 16kHz
- *   stt.close();
+ * Uses Deepgram's WebSocket API directly — no SDK version dependency issues.
  */
 export class DeepgramSTTService extends EventEmitter {
-  private client: ReturnType<typeof createClient>;
-  private connection: LiveClient | null = null;
+  private ws: WebSocket | null = null;
   private callSid: string;
 
   constructor(callSid: string) {
     super();
     this.callSid = callSid;
-    this.client = createClient(env.DEEPGRAM_API_KEY);
   }
 
   connect() {
-    this.connection = this.client.listen.live({
-      model: 'nova-3',
-      language: 'multi', // auto-detect language
-      smart_format: true,
-      interim_results: true,
-      endpointing: 300, // 300ms silence = end of speech
-      utterance_end_ms: 1000,
-      vad_events: true,
-      encoding: 'linear16',
-      sample_rate: 16000,
-      channels: 1,
+    const url = new URL('wss://api.deepgram.com/v1/listen');
+    url.searchParams.set('model', 'nova-3');
+    url.searchParams.set('language', 'multi');
+    url.searchParams.set('smart_format', 'true');
+    url.searchParams.set('interim_results', 'true');
+    url.searchParams.set('endpointing', '300');
+    url.searchParams.set('utterance_end_ms', '1000');
+    url.searchParams.set('vad_events', 'true');
+    url.searchParams.set('encoding', 'linear16');
+    url.searchParams.set('sample_rate', '16000');
+    url.searchParams.set('channels', '1');
+
+    this.ws = new WebSocket(url.toString(), {
+      headers: {
+        Authorization: `Token ${env.DEEPGRAM_API_KEY}`,
+      },
     });
 
-    this.connection.on(LiveTranscriptionEvents.Open, () => {
+    this.ws.on('open', () => {
       log.info('Deepgram stream connected', undefined, this.callSid);
     });
 
-    this.connection.on(LiveTranscriptionEvents.Transcript, (data: any) => {
-      const transcript = data.channel?.alternatives?.[0];
-      if (!transcript) return;
+    this.ws.on('message', (data: Buffer) => {
+      try {
+        const msg = JSON.parse(data.toString());
 
-      const event: TranscriptionEvent = {
-        transcript: transcript.transcript || '',
-        confidence: transcript.confidence || 0,
-        isFinal: data.is_final === true,
-        words: transcript.words?.map((w: any) => ({
-          word: w.word,
-          start: w.start,
-          end: w.end,
-          confidence: w.confidence,
-        })),
-      };
+        if (msg.type === 'Results') {
+          const transcript = msg.channel?.alternatives?.[0];
+          if (!transcript) return;
 
-      // Only emit non-empty transcripts
-      if (event.transcript.trim()) {
-        this.emit('transcript', event);
-      }
+          const event: TranscriptionEvent = {
+            transcript: transcript.transcript || '',
+            confidence: transcript.confidence || 0,
+            isFinal: msg.is_final === true,
+            words: transcript.words?.map((w: any) => ({
+              word: w.word,
+              start: w.start,
+              end: w.end,
+              confidence: w.confidence,
+            })),
+          };
 
-      if (data.speech_final) {
-        this.emit('speech_end');
+          if (event.transcript.trim()) {
+            this.emit('transcript', event);
+          }
+
+          if (msg.speech_final) {
+            this.emit('speech_end');
+          }
+        }
+
+        if (msg.type === 'UtteranceEnd') {
+          this.emit('utterance_end');
+        }
+      } catch (err) {
+        log.error('Deepgram message parse error', { error: String(err) }, this.callSid);
       }
     });
 
-    this.connection.on(LiveTranscriptionEvents.UtteranceEnd, () => {
-      this.emit('utterance_end');
-    });
-
-    this.connection.on(LiveTranscriptionEvents.Error, (error: any) => {
+    this.ws.on('error', (error: Error) => {
       log.error('Deepgram error', { error: String(error) }, this.callSid);
       this.emit('error', error);
     });
 
-    this.connection.on(LiveTranscriptionEvents.Close, () => {
-      log.info('Deepgram stream closed', undefined, this.callSid);
+    this.ws.on('close', (code: number, reason: Buffer) => {
+      log.info('Deepgram stream closed', { code, reason: reason.toString() }, this.callSid);
       this.emit('close');
     });
   }
@@ -89,15 +94,15 @@ export class DeepgramSTTService extends EventEmitter {
    * Send raw PCM audio (linear16, 16kHz, mono)
    */
   sendAudio(pcmBuffer: Buffer) {
-    if (this.connection) {
-      this.connection.send(pcmBuffer);
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(pcmBuffer);
     }
   }
 
   close() {
-    if (this.connection) {
-      this.connection.finish();
-      this.connection = null;
+    if (this.ws) {
+      this.ws.close();
+      this.ws = null;
     }
   }
 }
