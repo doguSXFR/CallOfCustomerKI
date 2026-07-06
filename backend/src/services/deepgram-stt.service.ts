@@ -25,8 +25,8 @@ export class DeepgramSTTService extends EventEmitter {
     url.searchParams.set('language', 'multi');
     url.searchParams.set('smart_format', 'true');
     url.searchParams.set('interim_results', 'true');
-    url.searchParams.set('endpointing', '300');
-    url.searchParams.set('utterance_end_ms', '1000');
+    url.searchParams.set('endpointing', '500');
+    url.searchParams.set('utterance_end_ms', '1500');
     url.searchParams.set('vad_events', 'true');
     url.searchParams.set('encoding', 'linear16');
     url.searchParams.set('sample_rate', '16000');

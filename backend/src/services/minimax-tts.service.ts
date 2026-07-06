@@ -7,9 +7,8 @@ const log = createLogger('minimax-tts');
 /**
  * Real-time Text-to-Speech via MiniMax HTTP streaming T2A API
  *
- * Uses SSE streaming — each chunk contains base64-encoded PCM 16kHz audio.
- * Output is PCM 16kHz, which needs conversion to mulaw 8kHz for Twilio
- * or to base64 for browser playback.
+ * Uses SSE streaming — each chunk contains base64-encoded MP3 audio.
+ * Output is MP3, sent directly to the browser for playback.
  */
 export class MiniMaxTTSService extends EventEmitter {
   private voiceId: string;
@@ -26,7 +25,7 @@ export class MiniMaxTTSService extends EventEmitter {
    * Emits 'audio_chunk' with Buffer data and 'done' when complete.
    *
    * MiniMax SSE format: lines of "data: <json>" where json has:
-   *   { data: { audio: "<base64 PCM 16kHz>" } }
+   *   { data: { audio: "<base64 MP3>" } }
    * End: "data: [DONE]"
    */
   async synthesize(text: string): Promise<void> {

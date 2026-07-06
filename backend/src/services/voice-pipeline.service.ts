@@ -17,7 +17,7 @@ type TTSService = ElevenLabsTTSService | MiniMaxTTSService;
  *
  * Differs from CallPipelineService (Twilio):
  *   - No mulaw conversion needed — browser sends raw PCM16
- *   - TTS audio is sent back as base64 MP3 chunks (not mulaw for Twilio)
+ *   - TTS audio is sent back as base64 MP3 chunks (ElevenLabs & MiniMax)
  */
 export class VoicePipelineService extends EventEmitter {
   private sessionId: string;
@@ -25,6 +25,7 @@ export class VoicePipelineService extends EventEmitter {
   private tts: TTSService;
   private messages: ConversationMessage[] = [];
   private isProcessing = false;
+  private lastUserTranscript = '';
   private silenceTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(sessionId: string) {
@@ -60,7 +61,7 @@ export class VoicePipelineService extends EventEmitter {
       this.emit('error', `STT: ${String(error)}`);
     });
 
-    const ttsFormat = env.TTS_PROVIDER === 'minimax' ? 'pcm16' : 'mp3';
+    const ttsFormat = 'mp3';
     this.tts.on('audio_chunk', (buffer: Buffer) => {
       console.log('[PIPELINE] audio_chunk received', buffer.length, ttsFormat);
       console.log('[PIPELINE] emitting audio_chunk to WS');
@@ -98,6 +99,11 @@ export class VoicePipelineService extends EventEmitter {
 
   private async handleUserSpeech(transcript: string) {
     if (this.isProcessing) return;
+    if (transcript === this.lastUserTranscript) {
+      log.info('Duplicate transcript ignored', { text: transcript }, this.sessionId);
+      return;
+    }
+    this.lastUserTranscript = transcript;
     this.isProcessing = true;
     this.clearSilenceTimer();
     this.emit('status', 'processing');
