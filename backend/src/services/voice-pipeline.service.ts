@@ -62,6 +62,8 @@ export class VoicePipelineService extends EventEmitter {
 
     const ttsFormat = env.TTS_PROVIDER === 'minimax' ? 'pcm16' : 'mp3';
     this.tts.on('audio_chunk', (buffer: Buffer) => {
+      console.log('[PIPELINE] audio_chunk received', buffer.length, ttsFormat);
+      console.log('[PIPELINE] emitting audio_chunk to WS');
       this.emit('audio_chunk', buffer, ttsFormat);
     });
 

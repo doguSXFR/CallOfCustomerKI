@@ -52,6 +52,7 @@ export class MiniMaxTTSService extends EventEmitter {
         language_boost: 'auto',
       }),
     });
+    console.log('[MINIMAX] response status', response.status);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -97,6 +98,7 @@ export class MiniMaxTTSService extends EventEmitter {
           const json = JSON.parse(data);
           // MiniMax SSE: { data: { audio: "<base64>" } }
           const audioBase64 = json.data?.audio ?? json.audio;
+          console.log('[MINIMAX] SSE chunk', audioBase64?.length || 0, 'bytes');
           if (audioBase64) {
             const audioBuffer = Buffer.from(audioBase64, 'base64');
             totalBytes += audioBuffer.length;
@@ -127,6 +129,7 @@ export class MiniMaxTTSService extends EventEmitter {
     }
 
     log.info('TTS synthesis complete', { totalBytes }, this.callSid);
+    console.log('[MINIMAX] total bytes emitted', totalBytes);
     this.emit('done');
   }
 }

@@ -48,6 +48,7 @@ export function VoiceChat() {
     if (playbackAttached.current) return;
     playbackAttached.current = true;
     onAudio((base64, format) => {
+      console.log('[VOICECHAT] onAudio callback', format);
       playback.enqueue(base64, format);
     });
   }, [onAudio, playback]);

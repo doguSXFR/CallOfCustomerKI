@@ -40,16 +40,19 @@ export function useAudioPlayback() {
       try {
         const ctx = getAudioContext();
         const audioBuffer = pcm16Base64ToAudioBuffer(entry.data, ctx);
+        console.log('[PLAYBACK] AudioBuffer created', audioBuffer.duration, 'seconds');
 
         const startTime = Math.max(ctx.currentTime, scheduledUntilRef.current);
         const source = ctx.createBufferSource();
         source.buffer = audioBuffer;
         source.connect(ctx.destination);
+        console.log('[PLAYBACK] playing AudioBuffer');
         source.start(startTime);
         scheduledUntilRef.current = startTime + audioBuffer.duration;
 
         source.onended = () => playNext();
-      } catch {
+      } catch (err) {
+        console.log('[PLAYBACK] error during playback', err);
         playNext();
       }
     } else {
@@ -75,6 +78,7 @@ export function useAudioPlayback() {
 
   const enqueue = useCallback(
     (base64Audio: string, format: 'mp3' | 'pcm16' = 'mp3') => {
+      console.log('[PLAYBACK] enqueue called', format, base64Audio.length);
       queueRef.current.push({ data: base64Audio, format });
       if (!isPlayingRef.current) {
         playNext();

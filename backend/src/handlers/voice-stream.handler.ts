@@ -41,7 +41,9 @@ export function handleVoiceStream(ws: WebSocket) {
 
   // Pipeline → Browser events
   pipeline.on('audio_chunk', (buffer: Buffer, format: 'mp3' | 'pcm16') => {
-    send({ type: 'audio', data: buffer.toString('base64'), format });
+    const base64 = buffer.toString('base64');
+    console.log('[WS-HANDLER] sending audio to browser', format, base64.length);
+    send({ type: 'audio', data: base64, format });
   });
 
   pipeline.on('transcript', (event: { text: string; role: 'user' | 'assistant'; interim?: boolean }) => {

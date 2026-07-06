@@ -48,6 +48,7 @@ export function useVoiceWebSocket(url: string) {
             }
             break;
           case 'audio':
+            console.log('[WS-CLIENT] audio message received', msg.format, msg.data.length);
             // handled by onAudio callback
             break;
           case 'status':
