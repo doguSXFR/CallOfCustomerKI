@@ -45,8 +45,15 @@ export class MiniMaxTTSService extends EventEmitter {
         model: 'speech-02-turbo',
         voice_setting: {
           voice_id: this.voiceId,
-          speed: 1.0,
-          emotion: 'neutral',
+          speed: 1,
+          vol: 1,
+          pitch: 0,
+        },
+        audio_setting: {
+          sample_rate: 32000,
+          bitrate: 128000,
+          format: 'mp3',
+          channel: 1,
         },
         language_boost: 'auto',
       }),

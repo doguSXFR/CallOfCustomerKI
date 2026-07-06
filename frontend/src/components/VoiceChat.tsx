@@ -17,6 +17,22 @@ const WS_URL =
 
 export function VoiceChat() {
   const [isRecording, setIsRecording] = useState(false);
+  const [uptime, setUptime] = useState<number | null>(null);
+
+  // Fetch uptime on mount
+  useEffect(() => {
+    fetch('/health')
+      .then(r => r.json())
+      .then(d => setUptime(d.uptime))
+      .catch(() => {});
+    const interval = setInterval(() => {
+      fetch('/health')
+        .then(r => r.json())
+        .then(d => setUptime(d.uptime))
+        .catch(() => {});
+    }, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const {
     wsStatus,
@@ -88,6 +104,11 @@ export function VoiceChat() {
       <div className="text-center space-y-2">
         <h1 className="text-3xl font-bold tracking-tight">C.O.C.K</h1>
         <p className="text-muted-foreground text-sm">AI Voice Assistant</p>
+        {uptime !== null && (
+          <p className="text-xs text-muted-foreground/60">
+            Uptime: {Math.floor(uptime / 3600)}h {Math.floor((uptime % 3600) / 60)}m {Math.floor(uptime % 60)}s
+          </p>
+        )}
       </div>
 
       <Card className="w-full">
