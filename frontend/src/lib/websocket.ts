@@ -2,6 +2,7 @@ export type VoiceWSMessage =
   | { type: 'audio'; data: string }
   | { type: 'transcript'; text: string; role: 'user' | 'assistant'; interim?: boolean }
   | { type: 'status'; status: string }
+  | { type: 'config'; ttsProvider: string; model: string }
   | { type: 'error'; error: string };
 
 export type VoiceWSSendMessage =

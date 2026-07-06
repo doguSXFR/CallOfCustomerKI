@@ -14,6 +14,14 @@ const envSchema = z.object({
   ELEVENLABS_API_KEY: z.string().default('placeholder'),
   ELEVENLABS_VOICE_ID: z.string().default('placeholder'),
 
+  // MiniMax (TTS)
+  MINIMAX_API_KEY: z.string().default('placeholder'),
+  MINIMAX_GROUP_ID: z.string().default('placeholder'),
+  MINIMAX_VOICE_ID: z.string().default('German_SweetLady'),
+
+  // TTS provider selection: 'elevenlabs' | 'minimax'
+  TTS_PROVIDER: z.enum(['elevenlabs', 'minimax']).default('elevenlabs'),
+
   // OpenAI (LLM)
   OPENAI_API_KEY: z.string().default('placeholder'),
   OPENAI_BASE_URL: z.string().default('https://api.openai.com/v1'),

@@ -12,6 +12,7 @@ const log = createLogger('voice-stream');
  * Protocol:
  *   Browser → Server: { type: 'audio', data: '<base64 PCM16 16kHz>' }
  *   Browser → Server: { type: 'end_of_speech' }
+ *   Server → Browser: { type: 'config', ttsProvider: '...', model: '...' }
  *   Server → Browser: { type: 'audio', data: '<base64 MP3>' }
  *   Server → Browser: { type: 'transcript', text: '...', role: 'user'|'assistant' }
  *   Server → Browser: { type: 'status', status: 'idle'|'listening'|'processing'|'speaking' }
@@ -28,6 +29,9 @@ export function handleVoiceStream(ws: WebSocket) {
       ws.send(JSON.stringify(msg));
     }
   }
+
+  // Send config to browser immediately on connect
+  send({ type: 'config', ttsProvider: 'ElevenLabs', model: 'eleven_turbo_v2_5' });
 
   // Pipeline → Browser events
   pipeline.on('audio_chunk', (buffer: Buffer) => {

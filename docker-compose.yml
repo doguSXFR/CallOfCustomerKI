@@ -18,6 +18,11 @@ services:
       # ElevenLabs (TTS)
       ELEVENLABS_API_KEY: ${ELEVENLABS_API_KEY}
       ELEVENLABS_VOICE_ID: ${ELEVENLABS_VOICE_ID}
+      # MiniMax (TTS)
+      MINIMAX_API_KEY: ${MINIMAX_API_KEY}
+      MINIMAX_GROUP_ID: ${MINIMAX_GROUP_ID}
+      MINIMAX_VOICE_ID: ${MINIMAX_VOICE_ID:-German_SweetLady}
+      TTS_PROVIDER: ${TTS_PROVIDER:-elevenlabs}
       # OpenAI (LLM)
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}

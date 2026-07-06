@@ -24,6 +24,8 @@ export function VoiceChat() {
     messages,
     interimText,
     pipelineStatus,
+    ttsProvider,
+    ttsModel,
     connect,
     disconnect,
     sendAudio,
@@ -131,6 +133,11 @@ export function VoiceChat() {
           <Badge variant={isConnected ? 'success' : isConnecting ? 'warning' : 'secondary'}>
             {isConnected ? 'Verbunden' : isConnecting ? 'Verbindet...' : 'Getrennt'}
           </Badge>
+          {isConnected && ttsProvider && (
+            <p className="text-xs text-muted-foreground mt-1">
+              TTS: {ttsProvider} <span className="opacity-60">({ttsModel})</span>
+            </p>
+          )}
         </CardContent>
       </Card>
 

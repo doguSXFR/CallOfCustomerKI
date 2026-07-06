@@ -14,6 +14,8 @@ export function useVoiceWebSocket(url: string) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [interimText, setInterimText] = useState<string>('');
   const [pipelineStatus, setPipelineStatus] = useState<string>('idle');
+  const [_ttsProvider, setTtsProvider] = useState<string | null>(null);
+  const [_ttsModel, setTtsModel] = useState<string | null>(null);
 
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -51,6 +53,10 @@ export function useVoiceWebSocket(url: string) {
           case 'status':
             setPipelineStatus(msg.status);
             break;
+          case 'config':
+            setTtsProvider(msg.ttsProvider);
+            setTtsModel(msg.model);
+            break;
           case 'error':
             console.error('Server error:', msg.error);
             break;
@@ -63,6 +69,8 @@ export function useVoiceWebSocket(url: string) {
     ws.onclose = () => {
       setWsStatus('disconnected');
       setPipelineStatus('idle');
+      setTtsProvider(null);
+      setTtsModel(null);
       reconnectTimerRef.current = setTimeout(() => connect(), 3000);
     };
 
@@ -124,6 +132,8 @@ export function useVoiceWebSocket(url: string) {
     messages,
     interimText,
     pipelineStatus,
+    ttsProvider: _ttsProvider,
+    ttsModel: _ttsModel,
     connect,
     disconnect,
     sendAudio,

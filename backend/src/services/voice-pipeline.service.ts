@@ -1,11 +1,16 @@
 import { EventEmitter } from 'events';
 import { DeepgramSTTService } from './deepgram-stt.service.js';
 import { ElevenLabsTTSService } from './elevenlabs-tts.service.js';
+import { MiniMaxTTSService } from './minimax-tts.service.js';
+import { env } from '../config/env.js';
 import { streamLLMResponse } from './openai-llm.service.js';
 import { createLogger, type ConversationMessage, type PipelineEvent } from '@cock/shared';
 import { SILENCE_TIMEOUT_MS, PROCESSING_TIMEOUT_MS } from '@cock/shared';
 
 const log = createLogger('voice-pipeline');
+
+/** Union type for TTS services — both share the same EventEmitter interface */
+type TTSService = ElevenLabsTTSService | MiniMaxTTSService;
 
 /**
  * Voice pipeline for browser audio (PCM 16kHz mono).
@@ -17,7 +22,7 @@ const log = createLogger('voice-pipeline');
 export class VoicePipelineService extends EventEmitter {
   private sessionId: string;
   private stt: DeepgramSTTService;
-  private tts: ElevenLabsTTSService;
+  private tts: TTSService;
   private messages: ConversationMessage[] = [];
   private isProcessing = false;
   private silenceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -26,7 +31,15 @@ export class VoicePipelineService extends EventEmitter {
     super();
     this.sessionId = sessionId;
     this.stt = new DeepgramSTTService(sessionId);
-    this.tts = new ElevenLabsTTSService(sessionId);
+
+    // Dynamic TTS provider selection based on TTS_PROVIDER env var
+    if (env.TTS_PROVIDER === 'minimax') {
+      log.info('Using MiniMax TTS provider', undefined, sessionId);
+      this.tts = new MiniMaxTTSService(sessionId);
+    } else {
+      log.info('Using ElevenLabs TTS provider', undefined, sessionId);
+      this.tts = new ElevenLabsTTSService(sessionId);
+    }
   }
 
   start() {
@@ -61,7 +74,7 @@ export class VoicePipelineService extends EventEmitter {
       log.error('TTS error', { error: String(error) }, this.sessionId);
       const msg = error instanceof Error ? error.message : String(error);
       if (msg.includes('401')) {
-        this.emit('error', 'ElevenLabs API key invalid');
+        this.emit('error', `TTS API key invalid (${env.TTS_PROVIDER})`);
       } else {
         this.emit('error', `TTS: ${msg}`);
       }
