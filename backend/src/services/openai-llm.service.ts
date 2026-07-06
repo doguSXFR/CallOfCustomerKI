@@ -34,6 +34,7 @@ export async function* streamLLMResponse(
   });
 
   let fullContent = '';
+  let inThinkingBlock = false;
 
   for await (const chunk of stream) {
     const delta = chunk.choices[0]?.delta;
@@ -41,6 +42,21 @@ export async function* streamLLMResponse(
 
     if (delta?.content) {
       fullContent += delta.content;
+
+      // Strip <think>...</think> blocks from models like MiniMax/DeepSeek
+      if (delta.content.includes('<think>')) {
+        inThinkingBlock = true;
+      }
+
+      if (inThinkingBlock) {
+        // Still inside thinking block — don't yield to TTS
+        if (delta.content.includes('</think>')) {
+          inThinkingBlock = false;
+        }
+        continue;
+      }
+
+      // Only yield actual response content (not thinking tokens)
       yield {
         content: delta.content,
         isComplete: false,
