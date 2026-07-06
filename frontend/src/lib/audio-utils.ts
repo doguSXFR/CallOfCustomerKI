@@ -1,0 +1,57 @@
+/**
+ * Convert Float32Array (Web Audio API) to PCM16 Int16Array at target sample rate.
+ * If source sample rate differs from target, performs simple linear interpolation resampling.
+ */
+export function float32ToPcm16(
+  float32: Float32Array,
+  sourceRate: number,
+  targetRate: number = 16000,
+): Int16Array {
+  let samples = float32;
+
+  if (sourceRate !== targetRate) {
+    const ratio = sourceRate / targetRate;
+    const newLength = Math.floor(float32.length / ratio);
+    const resampled = new Float32Array(newLength);
+    for (let i = 0; i < newLength; i++) {
+      const srcIdx = i * ratio;
+      const lo = Math.floor(srcIdx);
+      const hi = Math.min(lo + 1, float32.length - 1);
+      const frac = srcIdx - lo;
+      resampled[i] = float32[lo] * (1 - frac) + float32[hi] * frac;
+    }
+    samples = resampled;
+  }
+
+  const pcm = new Int16Array(samples.length);
+  for (let i = 0; i < samples.length; i++) {
+    const s = Math.max(-1, Math.min(1, samples[i]));
+    pcm[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+  }
+  return pcm;
+}
+
+/**
+ * Convert Int16Array to base64 string for JSON transport.
+ */
+export function pcm16ToBase64(pcm: Int16Array): string {
+  const bytes = new Uint8Array(pcm.buffer);
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
+/**
+ * Convert base64-encoded MP3/PCM to a Blob URL for playback.
+ */
+export function base64ToBlobUrl(base64: string, mimeType: string = 'audio/mpeg'): string {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  const blob = new Blob([bytes], { type: mimeType });
+  return URL.createObjectURL(blob);
+}

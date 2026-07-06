@@ -3,6 +3,7 @@ import { createServer } from 'http';
 import { WebSocketServer } from 'ws';
 import { env } from './config/env.js';
 import { handleTwilioMediaStream } from './handlers/twilio-media.handler.js';
+import { handleVoiceStream } from './handlers/voice-stream.handler.js';
 import twilioRoutes from './routes/twilio.routes.js';
 import healthRoutes from './routes/health.routes.js';
 import { createLogger } from '@cock/shared';
@@ -22,13 +23,16 @@ app.use('/', healthRoutes);
 const server = createServer(app);
 const wss = new WebSocketServer({ server });
 
-// Twilio Media Stream WebSocket endpoint
+// WebSocket endpoint routing
 wss.on('connection', (ws, req) => {
   const path = req.url;
 
   if (path === '/ws/twilio/media') {
     log.info('New Twilio Media Stream connection');
     handleTwilioMediaStream(ws);
+  } else if (path === '/ws/voice/stream') {
+    log.info('New Browser Voice Stream connection');
+    handleVoiceStream(ws);
   } else {
     log.warn('Unknown WebSocket path', { path });
     ws.close();
@@ -39,8 +43,9 @@ wss.on('connection', (ws, req) => {
 server.listen(env.PORT, env.HOST, () => {
   log.info(`🚀 C.O.C.K Server running on http://${env.HOST}:${env.PORT}`);
   log.info(`📞 Twilio webhook: POST /twilio/incoming`);
-  log.info(`🔌 WebSocket: ws://${env.HOST}:${env.PORT}/ws/twilio/media`);
-  log.info(`❤️  Health: http://${env.HOST}:${env.PORT}/health`);
+  log.info(`🔌 Twilio WS:    ws://${env.HOST}:${env.PORT}/ws/twilio/media`);
+  log.info(`🎤 Voice WS:     ws://${env.HOST}:${env.PORT}/ws/voice/stream`);
+  log.info(`❤️  Health:       http://${env.HOST}:${env.PORT}/health`);
 });
 
 // Graceful shutdown

@@ -18,6 +18,7 @@ export const TTS_OUTPUT_FORMAT = 'mp3_44100_128' as const;
 
 /** WebSocket paths */
 export const WS_PATH_MEDIA = '/ws/twilio/media';
+export const WS_PATH_VOICE_STREAM = '/ws/voice/stream';
 export const WS_PATH_STATUS = '/ws/status';
 
 /** Call timeouts */

@@ -84,3 +84,17 @@ export interface PipelineEvent {
   data?: Record<string, unknown>;
   error?: string;
 }
+
+// ── Browser Voice Stream Events ──
+
+/** Message from browser to backend */
+export type VoiceStreamInMessage =
+  | { type: 'audio'; data: string } // base64 PCM16 16kHz mono
+  | { type: 'end_of_speech' };
+
+/** Message from backend to browser */
+export type VoiceStreamOutMessage =
+  | { type: 'audio'; data: string } // base64 MP3 chunk
+  | { type: 'transcript'; text: string; role: 'user' | 'assistant' }
+  | { type: 'status'; status: 'idle' | 'listening' | 'processing' | 'speaking' }
+  | { type: 'error'; error: string };
