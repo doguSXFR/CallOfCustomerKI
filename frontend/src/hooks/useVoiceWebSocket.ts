@@ -18,6 +18,7 @@ export function useVoiceWebSocket(url: string) {
   const [_ttsModel, setTtsModel] = useState<string | null>(null);
 
   const wsRef = useRef<WebSocket | null>(null);
+  const audioCallbackRef = useRef<((base64: string, format?: 'mp3' | 'pcm16') => void) | null>(null);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const connect = useCallback(() => {
@@ -49,7 +50,11 @@ export function useVoiceWebSocket(url: string) {
             break;
           case 'audio':
             console.log('[WS-CLIENT] audio message received', msg.format, msg.data.length);
-            // handled by onAudio callback
+            if (audioCallbackRef.current) {
+              audioCallbackRef.current(msg.data, msg.format);
+            } else {
+              console.log('[WS-CLIENT] WARNING: no audio callback registered!');
+            }
             break;
           case 'status':
             setPipelineStatus(msg.status);
@@ -106,22 +111,7 @@ export function useVoiceWebSocket(url: string) {
   }, []);
 
   const onAudio = useCallback((callback: (base64: string, format?: 'mp3' | 'pcm16') => void) => {
-    const ws = wsRef.current;
-    if (!ws) return;
-
-    const handler = (event: MessageEvent) => {
-      try {
-        const msg: VoiceWSMessage = JSON.parse(event.data);
-        if (msg.type === 'audio') {
-          callback(msg.data, msg.format);
-        }
-      } catch {
-        // ignore
-      }
-    };
-
-    ws.addEventListener('message', handler);
-    return () => ws.removeEventListener('message', handler);
+    audioCallbackRef.current = callback;
   }, []);
 
   useEffect(() => {

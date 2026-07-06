@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useAudioCapture } from '../hooks/useAudioCapture';
 import { useAudioPlayback } from '../hooks/useAudioPlayback';
 import { useVoiceWebSocket } from '../hooks/useVoiceWebSocket';
@@ -17,7 +17,6 @@ const WS_URL =
 
 export function VoiceChat() {
   const [isRecording, setIsRecording] = useState(false);
-  const playbackAttached = useRef(false);
 
   const {
     wsStatus,
@@ -45,8 +44,6 @@ export function VoiceChat() {
   const capture = useAudioCapture({ onAudioData });
 
   useEffect(() => {
-    if (playbackAttached.current) return;
-    playbackAttached.current = true;
     onAudio((base64, format) => {
       console.log('[VOICECHAT] onAudio callback', format);
       playback.enqueue(base64, format);
