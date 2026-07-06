@@ -21,6 +21,7 @@ export function useVoiceWebSocket(url: string) {
   const audioCallbackRef = useRef<((base64: string, format?: 'mp3' | 'pcm16') => void) | null>(null);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const backoffDelayRef = useRef(1000);
+  const msgCountRef = useRef(0);
 
   const connect = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
@@ -37,17 +38,24 @@ export function useVoiceWebSocket(url: string) {
     ws.onmessage = (event) => {
       try {
         const msg: VoiceWSMessage = JSON.parse(event.data);
+        msgCountRef.current++;
+        console.log('[WS-CLIENT] message #' + msgCountRef.current, msg.type);
 
         switch (msg.type) {
           case 'transcript':
+            console.log('[WS-CLIENT] transcript "received"', { role: msg.role, text: msg.text.substring(0, 50), interim: msg.interim });
             if (msg.interim) {
               setInterimText(msg.text);
             } else {
               setInterimText('');
-              setMessages((prev) => [
-                ...prev,
-                { role: msg.role, text: msg.text, timestamp: Date.now() },
-              ]);
+              setMessages((prev) => {
+                const last = prev[prev.length - 1];
+                if (last && last.role === msg.role && last.text === msg.text) {
+                  console.log('[WS-CLIENT] DUPLICATE transcript skipped');
+                  return prev;
+                }
+                return [...prev, { role: msg.role, text: msg.text, timestamp: Date.now() }];
+              });
             }
             break;
           case 'audio':

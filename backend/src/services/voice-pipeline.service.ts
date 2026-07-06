@@ -50,6 +50,7 @@ export class VoicePipelineService extends EventEmitter {
     log.info('Voice pipeline starting', undefined, this.sessionId);
 
     this.stt.on('transcript', (event) => {
+      console.log('[PIPELINE] STT event "received"', { isFinal: event.isFinal, text: event.transcript, hasUtteranceEnd: false });
       if (event.isFinal && event.transcript.trim()) {
         // Accumulate isFinal transcripts — Deepgram sends multiple per utterance
         // as it refines the transcription. Don't process yet — wait for UtteranceEnd.
@@ -63,6 +64,7 @@ export class VoicePipelineService extends EventEmitter {
     // UtteranceEnd = Deepgram confirms the user has stopped speaking
     // This is the ONLY point where we process the buffered transcript
     this.stt.on('utterance_end', () => {
+      console.log('[PIPELINE] UtteranceEnd "received"', { pendingTranscript: this.pendingTranscript, isProcessing: this.isProcessing });
       if (this.pendingTranscript && !this.isProcessing) {
         log.info('UtteranceEnd — processing buffered transcript', { text: this.pendingTranscript }, this.sessionId);
         const transcript = this.pendingTranscript;
@@ -86,6 +88,7 @@ export class VoicePipelineService extends EventEmitter {
     });
 
     this.tts.on('done', () => {
+      console.log('[PIPELINE] TTS done "event"');
       log.info('TTS playback complete', undefined, this.sessionId);
       this.emit('status', 'idle');
       this.resetSilenceTimer();
@@ -115,6 +118,7 @@ export class VoicePipelineService extends EventEmitter {
   }
 
   private async handleUserSpeech(transcript: string) {
+    console.log('[PIPELINE] handleUserSpeech "called"', { text: transcript, isProcessing: this.isProcessing });
     // Guard: only one LLM call at a time
     if (this.isProcessing) {
       log.info('Speech ignored — already processing', { text: transcript }, this.sessionId);
@@ -143,6 +147,7 @@ export class VoicePipelineService extends EventEmitter {
 
     try {
       let fullResponse = '';
+      console.log('[PIPELINE] LLM stream "starting"', { messageCount: this.messages.length });
       const timeout = setTimeout(() => {
         log.warn('LLM processing timeout', undefined, this.sessionId);
       }, PROCESSING_TIMEOUT_MS);
@@ -155,6 +160,7 @@ export class VoicePipelineService extends EventEmitter {
           clearTimeout(timeout);
 
           if (fullResponse.trim()) {
+            console.log('[PIPELINE] LLM stream "complete"', { fullResponse: fullResponse.substring(0, 100) });
             this.messages.push({
               role: 'assistant',
               content: fullResponse,
@@ -169,7 +175,9 @@ export class VoicePipelineService extends EventEmitter {
             log.info('Agent said', { text: fullResponse }, this.sessionId);
             this.emit('transcript', { text: fullResponse, role: 'assistant' });
             this.emit('status', 'speaking');
+            console.log('[PIPELINE] TTS synthesis "starting"', { textLength: fullResponse.length });
             await this.tts.synthesize(fullResponse);
+            console.log('[PIPELINE] TTS synthesis "complete"');
           }
         }
       }

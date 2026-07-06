@@ -25,8 +25,8 @@ export class DeepgramSTTService extends EventEmitter {
     url.searchParams.set('language', 'multi');
     url.searchParams.set('smart_format', 'true');
     url.searchParams.set('interim_results', 'true');
-    url.searchParams.set('endpointing', '800');
-    url.searchParams.set('utterance_end_ms', '2500');
+    url.searchParams.set('endpointing', '1500');
+    url.searchParams.set('utterance_end_ms', '5000');
     url.searchParams.set('vad_events', 'true');
     url.searchParams.set('encoding', 'linear16');
     url.searchParams.set('sample_rate', '16000');
@@ -50,6 +50,13 @@ export class DeepgramSTTService extends EventEmitter {
           const transcript = msg.channel?.alternatives?.[0];
           if (!transcript) return;
 
+          console.log('[DEEPGRAM] Results event', {
+            type: msg.type,
+            is_final: msg.is_final,
+            speech_final: msg.speech_final,
+            transcript: transcript.transcript?.substring(0, 50),
+          });
+
           const event: TranscriptionEvent = {
             transcript: transcript.transcript || '',
             confidence: transcript.confidence || 0,
@@ -72,6 +79,7 @@ export class DeepgramSTTService extends EventEmitter {
         }
 
         if (msg.type === 'UtteranceEnd') {
+          console.log('[DEEPGRAM] UtteranceEnd event received');
           this.emit('utterance_end');
         }
       } catch (err) {

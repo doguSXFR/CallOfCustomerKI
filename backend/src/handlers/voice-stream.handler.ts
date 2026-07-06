@@ -47,6 +47,7 @@ export function handleVoiceStream(ws: WebSocket) {
   });
 
   pipeline.on('transcript', (event: { text: string; role: 'user' | 'assistant'; interim?: boolean }) => {
+    console.log('[WS-HANDLER] sending transcript', { role: event.role, text: event.text.substring(0, 50), interim: event.interim });
     send({ type: 'transcript', text: event.text, role: event.role, interim: event.interim });
   });
 

@@ -23,7 +23,7 @@ export function ChatLog({ messages }: ChatLogProps) {
     <div className="flex flex-col gap-3 max-h-80 overflow-y-auto px-1">
       {messages.map((msg, i) => (
         <div
-          key={i}
+          key={`${msg.timestamp}-${msg.text}-${i}`}
           className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
         >
           <div
