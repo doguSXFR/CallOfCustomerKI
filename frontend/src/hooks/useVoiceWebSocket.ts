@@ -20,6 +20,7 @@ export function useVoiceWebSocket(url: string) {
   const wsRef = useRef<WebSocket | null>(null);
   const audioCallbackRef = useRef<((base64: string, format?: 'mp3' | 'pcm16') => void) | null>(null);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const backoffDelayRef = useRef(1000);
 
   const connect = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
@@ -30,6 +31,7 @@ export function useVoiceWebSocket(url: string) {
 
     ws.onopen = () => {
       setWsStatus('connected');
+      backoffDelayRef.current = 1000; // Reset backoff on successful connection
     };
 
     ws.onmessage = (event) => {
@@ -77,7 +79,10 @@ export function useVoiceWebSocket(url: string) {
       setPipelineStatus('idle');
       setTtsProvider(null);
       setTtsModel(null);
-      reconnectTimerRef.current = setTimeout(() => connect(), 3000);
+      const delay = backoffDelayRef.current;
+      console.log(`[WS-CLIENT] Reconnecting in ${delay}ms`);
+      reconnectTimerRef.current = setTimeout(() => connect(), delay);
+      backoffDelayRef.current = Math.min(backoffDelayRef.current * 2, 30000);
     };
 
     ws.onerror = () => {

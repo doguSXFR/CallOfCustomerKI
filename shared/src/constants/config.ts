@@ -23,8 +23,8 @@ export const WS_PATH_STATUS = '/ws/status';
 
 /** Call timeouts */
 export const MAX_CALL_DURATION_MS = 30 * 60 * 1000; // 30 min
-export const SILENCE_TIMEOUT_MS = 30_000; // 30s silence → end call
-export const PROCESSING_TIMEOUT_MS = 15_000; // 15s max for LLM response
+export const SILENCE_TIMEOUT_MS = 45_000; // 45s silence → end call (senior-friendly)
+export const PROCESSING_TIMEOUT_MS = 20_000; // 20s max for LLM response (senior-friendly)
 
 /** LLM defaults */
 export const DEFAULT_LLM_MODEL = 'gpt-4o-mini';

@@ -27,6 +27,7 @@ export class VoicePipelineService extends EventEmitter {
   private isProcessing = false;
   private lastUserTranscript = '';
   private lastTranscriptTime = 0;
+  private lastLLMCallTime = 0;
   private silenceTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(sessionId: string) {
@@ -109,6 +110,16 @@ export class VoicePipelineService extends EventEmitter {
     }
     this.lastUserTranscript = normalized;
     this.lastTranscriptTime = now;
+
+    // FIX 1: LLM Rate Limiter — ensure at least 1s between LLM calls
+    const elapsed = Date.now() - this.lastLLMCallTime;
+    if (elapsed < 1000) {
+      const delayMs = 1000 - elapsed;
+      log.info('LLM rate limit delay', { delayMs }, this.sessionId);
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+    this.lastLLMCallTime = Date.now();
+
     this.isProcessing = true;
     this.clearSilenceTimer();
     this.emit('status', 'processing');
@@ -138,6 +149,11 @@ export class VoicePipelineService extends EventEmitter {
               content: fullResponse,
               timestamp: Date.now(),
             });
+
+            // FIX 2: Rolling window — keep context small and prevent RAM growth
+            if (this.messages.length > 20) {
+              this.messages = this.messages.slice(-20);
+            }
 
             log.info('Agent said', { text: fullResponse }, this.sessionId);
             this.emit('transcript', { text: fullResponse, role: 'assistant' });
